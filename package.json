@@ -18,7 +18,15 @@
     "babel-preset-es2015-node5": "^1.2.0",
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-1": "^6.24.1",
-    "ink": "^0.2.1",
+    "chalk": "^2.3.0",
+    "ink": "^0.3.1",
+    "left-pad": "^1.2.0",
     "ramda": "^0.25.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^8.0.3",
+    "eslint": "^4.13.1",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-react": "^7.5.1"
   }
 }
