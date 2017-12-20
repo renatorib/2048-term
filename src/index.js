@@ -1,44 +1,36 @@
-import { pipe } from 'ramda'
 import { h, render, Component, Text } from 'ink'
-import { LEFT, UP, RIGHT, DOWN } from './directions'
 import leftPad from 'left-pad'
 
-import { move, newBoard, canMoveTo, isGameOver, score, spawn } from './board'
-import { setTimeout } from 'core-js/library/web/timers'
+import Board from './ui/Board'
+import Line from './ui/Line'
+
+import { mapTiles, directions, newGameState, move } from './2048'
+const { LEFT, UP, RIGHT, DOWN } = directions
+
+const readableColor = hex => {
+  if (!hex) return ''
+
+  return parseInt(hex.replace('#', ''), 16) > 0xffffff / 2
+    ? '#000000'
+    : '#ffffff'
+}
 
 const colors = {
-  0: '#222222',
+  0: null,
   2: '#ffffff',
   4: '#ede0c8',
   8: '#f2b179',
-  16: '#f59563',
-  32: '#f67b5f',
-  64: '#7986CB',
-  128: '#64B5F6',
+  16: '#fd8546',
+  32: '#ff6b84',
+  64: '#9CA4D4',
+  128: '#96CEFB',
   256: '#AED581',
   512: '#DCE775',
   1024: '#FFF176',
-  2048: 'purple',
-  4096: '#FFD54F',
-  8192: '#E57373',
+  2048: '#444444',
+  4096: '#222222',
+  8192: '#000000',
 }
-
-const newGameState = () => ({
-  board: newBoard(),
-  score: 0,
-  gameOver: false,
-  moves: 0,
-  scoreToast: '',
-})
-
-const Line = ({ children, p = 0 }) => (
-  <div>
-    {Array(p)
-      .fill(' ')
-      .join('')}
-    {children}
-  </div>
-)
 
 const Section = ({ title, children }) => (
   <div>
@@ -60,50 +52,37 @@ const Key = ({ key, children, p = 0 }) => (
 )
 
 class Game extends Component {
-  state = newGameState()
-
-  newGame = () => this.setState(newGameState())
-
-  move = direction => {
-    this.setState(({ board, moves }) => {
-      const update = {}
-
-      if (canMoveTo(direction)(board)) {
-        update.board = pipe(move(direction), spawn)(board)
-        update.score = score(update.board)
-        update.moves = moves + 1
-
-        const scoreDiff = update.score - score(board)
-        scoreDiff > 0 && this.toast('scoreToast', `+${scoreDiff}`)
-
-        if (isGameOver(update.board)) {
-          update.gameOver = true
-        }
-      }
-
-      return update
-    })
+  state = {
+    game: newGameState(),
+    scoreToast: '',
   }
 
-  toasts = {}
-  toast = (key, value, time = 1000) => {
-    if (this.toasts[key]) {
-      clearTimeout(this.toasts[key])
-    }
+  newGame = () => this.setState({ game: newGameState() })
 
-    this.setState({ [key]: value }, () => {
-      this.toasts[key] = setTimeout(() => {
-        this.setState({ [key]: '' })
-      }, time)
+  move = direction =>
+    this.setState(
+      prevState => ({ game: move(direction)(prevState.game) }),
+      this.didMove
+    )
+
+  didMove = () => {
+    const { scoreEarned } = this.state.game
+
+    this.setState({
+      scoreToast: scoreEarned > 0 ? `+${scoreEarned}` : '',
     })
   }
 
   handleKeyPress = (ch, key = {}) => {
     const commands = {
       left: () => this.move(LEFT),
+      a: () => this.move(LEFT),
       up: () => this.move(UP),
+      w: () => this.move(UP),
       right: () => this.move(RIGHT),
+      d: () => this.move(RIGHT),
       down: () => this.move(DOWN),
+      s: () => this.move(DOWN),
       n: () => this.newGame(),
     }
 
@@ -115,24 +94,17 @@ class Game extends Component {
     process.stdin.on('keypress', this.handleKeyPress)
   }
 
-  renderBoard = () =>
-    this.state.board.map((r, ri) => (
-      <Line key={ri} p={3}>
-        {r.map((v, ti) => (
-          <Text key={ti} bgHex={colors[v.value]} hex="#222222">
-            [{leftPad(v.value === 0 ? '' : v.value, 5)}]
-          </Text>
-        ))}
-      </Line>
-    ))
-
   render() {
-    const { score, gameOver, scoreToast, moves } = this.state
+    const { scoreToast } = this.state
+    const { board, score, gameOver, moves } = this.state.game
 
     return (
       <span>
         <Section title="Keys">
           <Key p={3} key="[←] [→] [↑] [↓]">
+            move
+          </Key>
+          <Key p={3} key="[w] [a] [s] [d]">
             move
           </Key>
           <Key p={3} key="[n]">
@@ -145,7 +117,7 @@ class Game extends Component {
           </Line>
           <Line p={3}>
             <Text>Score</Text>: <Text green>{score}</Text>{' '}
-            <Text hex="#999999">{scoreToast}</Text>
+            <Text hex="#666666">{scoreToast}</Text>
           </Line>
           {gameOver && (
             <span>
@@ -158,7 +130,20 @@ class Game extends Component {
             </span>
           )}
         </Section>
-        <Section title="Game">{this.renderBoard()}</Section>
+        <Section title="Game">
+          <Board
+            p={3}
+            board={mapTiles(tile => {
+              const color = colors[tile.value]
+
+              return (
+                <Text bgHex={color} hex={color && readableColor(color)}>
+                  {leftPad(tile.value === 0 ? '' : tile.value, 4)}
+                </Text>
+              )
+            })(board)}
+          />
+        </Section>
       </span>
     )
   }
